@@ -10,7 +10,6 @@ describe GearmanAdminClient do
     @sockets = []
     @gearmand = GearmandControl.new(4730)
     @gearmand.start
-    @gearmand.test!
   end
 
   after do
