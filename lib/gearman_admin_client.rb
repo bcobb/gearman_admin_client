@@ -22,26 +22,27 @@ class GearmanAdminClient
       connection.write('workers')
       output = connection.drain.split("\n")
 
-      output.map! do |line|
-        segments = line.split(':')
+      workers = output.map do |line|
+        if line.end_with?(':')
+          function_names = []
+          remainder = line
+        else
+          segments = line.split(':')
 
-        function_names = segments.pop.strip.split(' ')
+          function_names = segments.pop.strip.split(' ')
 
-        remainder = segments.join(':')
+          remainder = segments.join(':')
+        end
 
         fd, ip_address, client_id = remainder.split(' ').map(&:strip)
 
-        unless function_names.include?('-')
-          Worker.new(
-            :file_descriptor => fd,
-            :ip_address => ip_address,
-            :client_id => client_id,
-            :function_names => function_names
-          )
-        end
+        Worker.new(
+          :file_descriptor => fd,
+          :ip_address => ip_address,
+          :client_id => client_id,
+          :function_names => function_names
+        )
       end
-
-      output.compact!
     end
   end
 

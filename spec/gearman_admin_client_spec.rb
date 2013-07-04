@@ -89,8 +89,6 @@ describe GearmanAdminClient do
   it 'can list registered workers' do
     client = GearmanAdminClient.new(@gearmand.address)
 
-    expect(client.workers).to be_empty
-
     can_do(@gearmand.address, 'function_1', 'function_2')
     can_do(@gearmand.address, 'function_3')
 
@@ -99,6 +97,7 @@ describe GearmanAdminClient do
       sort_by(&:size)
 
     expect(functions).to eql([
+      [],
       ['function_3'],
       ['function_1', 'function_2']
     ])
