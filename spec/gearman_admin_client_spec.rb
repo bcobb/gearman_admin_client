@@ -156,4 +156,16 @@ describe GearmanAdminClient do
     )])
   end
 
+  it 'can disconnect' do
+    client = GearmanAdminClient.new(@gearmand.address)
+
+    client.status
+
+    expect(client).to_not be_disconnected
+
+    client.disconnect!
+
+    expect(client).to be_disconnected
+  end
+
 end
