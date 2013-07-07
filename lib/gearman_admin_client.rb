@@ -101,12 +101,12 @@ class GearmanAdminClient
     DISCONNECTED == @connection
   end
 
-  private
-
   def disconnect!
     @connection.close
     @connection = DISCONNECTED
   end
+
+  private
 
   def connect!(&and_then)
     if disconnected?
