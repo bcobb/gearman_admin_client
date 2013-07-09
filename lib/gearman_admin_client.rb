@@ -1,8 +1,8 @@
 require 'socket'
 
-require_relative 'gearman_admin_client/worker'
-require_relative 'gearman_admin_client/registered_function'
-require_relative 'gearman_admin_client/connection'
+require 'gearman_admin_client/worker'
+require 'gearman_admin_client/registered_function'
+require 'gearman_admin_client/connection'
 
 class GearmanAdminClient
 
