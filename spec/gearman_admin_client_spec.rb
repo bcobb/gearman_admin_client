@@ -163,7 +163,7 @@ describe GearmanAdminClient do
 
     expect(client).to_not be_disconnected
 
-    client.disconnect!
+    client.disconnect
 
     expect(client).to be_disconnected
   end

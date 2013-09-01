@@ -1,130 +1,119 @@
-require 'socket'
+require 'celluloid'
 
 require 'gearman_admin_client/worker'
 require 'gearman_admin_client/registered_function'
 require 'gearman_admin_client/connection'
 
 class GearmanAdminClient
+  include Celluloid
 
-  DISCONNECTED = :DISCONNECTED unless defined? DISCONNECTED
+  trap_exit :disconnect
+  finalizer :disconnect
 
-  class BadAddress < RuntimeError ; end
-
-  attr_reader :address
+  attr_reader :address, :connection
 
   def initialize(address)
     @address = address
-    @connection = DISCONNECTED
+    @connect = Connection.method(:new_link)
+    build_connection
   end
 
   def workers
-    connect! do |connection|
-      connection.write('workers')
-      output = connection.drain.split("\n")
+    connection.write('workers')
+    output = connection.drain.split("\n")
 
-      workers = output.map do |line|
-        if line.end_with?(':')
-          function_names = []
-          remainder = line
-        else
-          segments = line.split(':')
+    workers = output.map do |line|
+      if line.end_with?(':')
+        function_names = []
+        remainder = line
+      else
+        segments = line.split(':')
 
-          function_names = segments.pop.strip.split(' ')
+        function_names = segments.pop.strip.split(' ')
 
-          remainder = segments.join(':')
-        end
-
-        fd, ip_address, client_id = remainder.split(' ').map(&:strip)
-
-        Worker.new(
-          :file_descriptor => fd,
-          :ip_address => ip_address,
-          :client_id => client_id,
-          :function_names => function_names
-        )
+        remainder = segments.join(':')
       end
+
+      fd, ip_address, client_id = remainder.split(' ').map(&:strip)
+
+      Worker.new(
+        :file_descriptor => fd,
+        :ip_address => ip_address,
+        :client_id => client_id,
+        :function_names => function_names
+      )
     end
   end
 
   def status
-    connect! do |connection|
-      connection.write('status')
-      output = connection.drain.split("\n")
+    connection.write('status')
+    output = connection.drain.split("\n")
 
-      output.map do |line|
-        function_name, total, running, workers = line.split("\t")
+    output.map do |line|
+      function_name, total, running, workers = line.split("\t")
 
-        RegisteredFunction.new(
-          :name => function_name,
-          :jobs_in_queue => total,
-          :running_jobs => running,
-          :available_workers => workers
-        )
-      end
+      RegisteredFunction.new(
+        :name => function_name,
+        :jobs_in_queue => total,
+        :running_jobs => running,
+        :available_workers => workers
+      )
     end
   end
 
   def server_version
-    connect! do |connection|
-      connection.write('version')
-      connection.read.strip
-    end
+    connection.write('version')
+    connection.read.strip
   end
 
   def shutdown(options = {})
-    connect! do |connection|
-      command = ['shutdown']
+    command = ['shutdown']
 
-      if options.fetch(:graceful, false)
-        command << 'graceful'
-      end
-
-      connection.write(command.join(' '))
-      connection.read.strip
-
-      connection.eof? && disconnect!
+    if options.fetch(:graceful, false)
+      command << 'graceful'
     end
+
+    connection.write(command.join(' '))
+    connection.read.strip
+
+    connection.eof? && disconnect
 
     true
   end
 
   def max_queue_size(function_name, queue_size = nil)
-    connect! do |connection|
-      command = ['maxqueue', function_name, queue_size].compact
+    command = ['maxqueue', function_name, queue_size].compact
 
-      connection.write(command.join(' '))
-      connection.read.strip
+    connection.write(command.join(' '))
+    connection.read.strip
+  end
+
+  def disconnect(actor = nil, reason = nil)
+    if @connection && @connection.alive?
+      @connection.terminate
+    end
+
+    if reason
+      build_connection
     end
   end
 
   def disconnected?
-    DISCONNECTED == @connection
-  end
-
-  def disconnect!
-    @connection.close
-    @connection = DISCONNECTED
-  end
-
-  private
-
-  def connect!(&and_then)
-    if disconnected?
-      just_open_a_socket do |socket|
-        @connection = Connection.new(socket)
-      end
+    if @connection
+      not @connection.alive?
     end
-
-    and_then.call(@connection)
   end
 
-  def just_open_a_socket
-    host, port = address.split(':')
+  def build_connection
+    @connection = @connect.call(@address)
+  end
 
-    if host && port
-      yield TCPSocket.new(host, port)
-    else
-      raise BadAddress, "expected address to look like HOST:PORT"
+  def connect(&and_then)
+    disconnect
+    build_connection
+
+    if and_then
+      and_then.call(@connection)
     end
   end
 
