@@ -1,0 +1,7 @@
+language: ruby
+script: "bundle exec rspec"
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq gearman-job-server
+rvm:
+  - 2.0.0
