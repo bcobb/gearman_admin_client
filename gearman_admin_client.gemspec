@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "rspec"
   spec.add_development_dependency "gearmand_control"
-  spec.add_runtime_dependency "virtus", "1.0.0.beta0"
+  spec.add_runtime_dependency "virtus"
   spec.add_runtime_dependency "celluloid"
   spec.add_runtime_dependency "celluloid-io"
 end
